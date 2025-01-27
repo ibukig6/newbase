@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, url_for, redirect
 
 import cv2
 import numpy as np
+import os
 
 app = Flask(__name__)
 
@@ -23,6 +24,7 @@ def submit():
 
         cap = cv2.VideoCapture(video)
         detect=0
+        cut = None
         # 影片寫入並輸出
         # fps = int(cap.get(cv2.CAP_PROP_FPS))  # 幀率
         # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) * 0.5)  # 調整後的寬
@@ -43,19 +45,18 @@ def submit():
             mask = (newF >= [200, 200, 200]).all(axis=2)
             if detect == 0:
                 if np.any(mask):
+                    cut = frame
                     print("偵測到球了")
                     detect = 1
         
             if detect == 1:
                 cv2.putText(frame, "detect", (100, 500), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
-            else:
-                print("沒有偵測到球")
             # cv2.imshow('Frame', frame)
             # out.write(frame)
 
+        output = os.path.join("video", "detected_frame.jpg")
+        cv2.imwrite(output, cut)
         
-        
-
         cap.release()
         # out.release()
         cv2.destroyAllWindows()
@@ -66,9 +67,9 @@ def submit():
 def video():
     return render_template("video.html")
 
-@app.route("/v2")
-def v2():
-    return render_template("v2.html")
+# @app.route("/v2")
+# def v2():
+#     return render_template("v2.html")
 
 if __name__ == '__main__':
     app.run(debug=True)
