@@ -46,7 +46,7 @@ def submit():
                 cv2.putText(frame, "detect", (100, 500), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
             # cv2.imshow('Frame', frame)
             # out.write(frame)
-            
+
         # output = os.path.join("video", "detected_frame.jpg")
         # cv2.imwrite(output, cut)
 
@@ -67,9 +67,9 @@ def submit():
 def video():
     return render_template("video.html")
 
-# @app.route("/v2")
-# def v2():
-#     return render_template("v2.html")
+@app.route("/v2")
+def v2():
+    return render_template("v2.html")
 
 if __name__ == '__main__':
     app.run(debug=True)

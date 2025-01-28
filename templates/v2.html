@@ -6,9 +6,12 @@
 </head>
 <body>
     <h1>影片輸出測試</h1>
-    <!-- <video src="video/v_1.mkv" controls width="500">無法載入影片</video> -->
+    <video controls width="500">
+        <source src="{{ url_for('static', filename='video/test.mp4') }}" type="video/mp4">
+        您的瀏覽器不支援播放此影片。
+    </video>
 
-    <img src="detected_frame.jpg" width="400">
+    <!-- <img src="detected_frame.jpg" width="400"> -->
 
 </body>
 </html>
