@@ -25,16 +25,9 @@ def submit():
         cap = cv2.VideoCapture(video)
         detect=0
         cut = None
-        # 影片寫入並輸出
-        # fps = int(cap.get(cv2.CAP_PROP_FPS))  # 幀率
-        # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) * 0.5)  # 調整後的寬
-        # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) * 0.5)  # 調整後的高
 
-        # fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 使用 mp4v 編碼
-        # out = cv2.VideoWriter('video/d1.mp4', fourcc, fps, (width, height))
         while True:
             ret, frame = cap.read()
-
             if not ret:
                 print("影片讀取完畢")
                 break
@@ -53,9 +46,16 @@ def submit():
                 cv2.putText(frame, "detect", (100, 500), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
             # cv2.imshow('Frame', frame)
             # out.write(frame)
+            
+        # output = os.path.join("video", "detected_frame.jpg")
+        # cv2.imwrite(output, cut)
 
-        output = os.path.join("video", "detected_frame.jpg")
-        cv2.imwrite(output, cut)
+        if cut is not None:
+            output = os.path.join("video", "detected_frame.jpg")
+            cv2.imwrite(output, cut)
+            print(f"圖片已保存至: {output}")
+        else:
+            print("未偵測到球，無法保存圖片")
         
         cap.release()
         # out.release()
