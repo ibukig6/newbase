@@ -1,13 +1,12 @@
-# app.py
 from flask import Flask, render_template, request, url_for, redirect
-
 import cv2
 import numpy as np
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
-# 預設首頁
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -16,60 +15,76 @@ def index():
 def input():
     return render_template("input.html")
 
-@app.route("/submit", methods=["GET", "POST"])
+@app.route("/submit", methods=["POST"])
 def submit():
-    if request.method == "POST":
-        video = request.form["video"]
+    # 接收影片檔案
+    video_file = request.files["video"]
+    if not video_file:
+        return "未上傳影片", 400
 
+    # 保存上傳的影片到伺服器
+    upload_folder = "uploads"
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+    video_path = os.path.join(upload_folder, video_file.filename)
+    video_file.save(video_path)  # 將影片保存到伺服器
 
-        cap = cv2.VideoCapture(video)
-        detect=0
-        cut = None
+    # 使用 OpenCV 處理影片
+    cap = cv2.VideoCapture("uploads/v_1.mp4")
+    detect = 0
+    fps = int(cap.get(cv2.CAP_PROP_FPS))  # 幀率
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) * 0.5)  # 調整後的寬
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) * 0.5)  # 調整後的高
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("影片讀取完畢")
-                break
-            frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-            newF = frame[150:450, 730:740]  # 偵測範圍
-            cv2.rectangle(frame, (730, 150), (740, 450), (0, 0, 255), 2)
+    # 確保輸出目錄存在
+    output_folder = "static/video"
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
-            mask = (newF >= [200, 200, 200]).all(axis=2)
-            if detect == 0:
-                if np.any(mask):
-                    cut = frame
-                    print("偵測到球了")
-                    detect = 1
-        
-            if detect == 1:
-                cv2.putText(frame, "detect", (100, 500), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
-            # cv2.imshow('Frame', frame)
-            # out.write(frame)
+    # 定義輸出的影片路徑
+    output_path = os.path.join(output_folder, "tes.mp4")
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 使用 mp4v 編碼
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    cut = None
+    s = 0
+    while True:
+        s += 1
+        ret, frame = cap.read()
+        if not ret:
+            print("影片讀取完畢")
+            break
+        frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+        newF = frame[150:450, 730:740]  # 偵測範圍
+        cv2.rectangle(frame, (730, 150), (740, 450), (0, 0, 255), 2)
 
-        # output = os.path.join("video", "detected_frame.jpg")
-        # cv2.imwrite(output, cut)
+        mask = (newF >= [200, 200, 200]).all(axis=2)
+        if detect == 0:
+            if np.any(mask):
+                cut = frame
+                print("偵測到球了")
+                detect = 1
 
-        if cut is not None:
-            output = os.path.join("video", "detected_frame.jpg")
-            cv2.imwrite(output, cut)
-            print(f"圖片已保存至: {output}")
-        else:
-            print("未偵測到球，無法保存圖片")
-        
-        cap.release()
-        # out.release()
-        cv2.destroyAllWindows()
+        if detect == 1:
+            cv2.putText(frame, "detect", (100, 500), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
 
-        return redirect(url_for("video"))
-    
+        out.write(frame)  # 將處理過的影像寫入輸出影片
+
+    if cut is not None:
+        output = os.path.join("static/video", "detected.jpg")
+        cv2.imwrite(output, cut)
+        print(f"圖片已保存至: {output}")
+    else:
+        print("未偵測到球，無法保存圖片")
+
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+    print(f"影片總幀數: {s}")
+    return render_template("video.html")
+
 @app.route("/video")
 def video():
     return render_template("video.html")
-
-@app.route("/v2")
-def v2():
-    return render_template("v2.html")
 
 if __name__ == '__main__':
     app.run(debug=True)
