@@ -43,7 +43,7 @@ def submit():
 
     # 定義輸出的影片路徑
     output_path = os.path.join(output_folder, "tes.mp4")
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 使用 mp4v 編碼
+    fourcc = cv2.VideoWriter_fourcc(*'X264')  # 使用 mp4v 編碼
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
     cut = None
     s = 0
@@ -57,7 +57,7 @@ def submit():
         newF = frame[150:450, 730:740]  # 偵測範圍
         cv2.rectangle(frame, (730, 150), (740, 450), (0, 0, 255), 2)
 
-        mask = (newF >= [200, 200, 200]).all(axis=2)
+        mask = (newF >= [210, 210, 210]).all(axis=2)
         if detect == 0:
             if np.any(mask):
                 cut = frame
