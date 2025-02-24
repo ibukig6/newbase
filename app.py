@@ -6,6 +6,8 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
+UPLOAD_FOLDER = 'static'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/')
 def index():
@@ -14,6 +16,40 @@ def index():
 @app.route("/input")
 def input():
     return render_template("input.html")
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    video = request.files['video']
+    if not video:
+        return "未上傳影片", 400
+
+    if video:
+        video_path = os.path.join(app.config['UPLOAD_FOLDER'], 'uploaded_video.mp4')    # 路徑
+        video.save(video_path)      # 存影片
+
+        cap = cv2.VideoCapture(video_path)      # 讀取影片
+        success, frame = cap.read()
+
+        if success:
+            frame_path = os.path.join(app.config['UPLOAD_FOLDER'], 'setting_pitcure.jpg')
+            cv2.imwrite(frame_path, frame)
+        cap.release()
+
+        return redirect(url_for('setting'))
+
+@app.route('/setting')
+def setting():
+    return render_template('setting.html')
+
+@app.route('/submit_setting', methods=["POST"])
+def submit_setting():
+    x1 = int(request.form["x1"])
+    x2 = int(request.form["x2"])
+    y1 = int(request.form["y1"])
+    y2 = int(request.form["y2"])
+
+    newF = (y1, y2, x1, x2)
+    return f"Selected range: newF = frame[{y1}:{y2}, {x1}:{x2}]"
 
 @app.route("/submit", methods=["POST"])
 def submit():
