@@ -1,15 +1,34 @@
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
+import pymysql
 
-db = SQLAlchemy()
+conn = pymysql.connect(
+    host="localhost",
+    user="root",
+    password="1bC@111111",
+    database="demo01"
+)
 
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)    #最多80個字元、確保不會重複、不能是null
-    password = db.Column(db.String(200), nullable=False)
+def con_mySQL(sql_code):
+    try:
+        conn.ping(reconnect=True)
+        print(sql_code)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute(sql_code)
 
-    def set_password(self, password):
-        self.password = generate_password_hash(password)
+        conn.commit()
 
-    def check_password(self, password):
-        return check_password_hash(self.password, password)
+        conn.close()
+        return cursor
+    except pymysql.MySQLError as err_massage:
+
+        conn.close()
+        return type(err_massage), err_massage
+
+# username = "張三"
+
+# code = "INSERT INTO `login_user` (`username`, `password`) VALUES ('%s', '%s')" %(username, pwd)
+# print(con_mySQL(code))
+
+username = "張三"
+code = "select * from login_user"
+cursor_ans = con_mySQL(code)
+print(cursor_ans.fetchall())

@@ -3,40 +3,57 @@ import cv2
 import numpy as np
 import os
 from flask_cors import CORS
-from models import db
-from routes import auth_bp  # 引入剛剛的 Blueprint
+from models import con_mySQL
+# from routes import auth_bp  # 引入剛剛的 Blueprint
+# import mysql.connector
 
 app = Flask(__name__)
 CORS(app)
 # UPLOAD_FOLDER = 'static'
 # app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:你的密碼@localhost/flask_login'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'supersecretkey'
-db.init_app(app)
-app.register_blueprint(auth_bp, url_prefix="/auth")  # 註冊藍圖
-
-try:
-    import mysql.connector
-
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="你的密碼",
-        database="flask_login"
-    )
-
-    if conn.is_connected():
-        print("✅ MySQL 連線成功！")
-    else:
-        print("❌ 連線失敗！")
-except mysql.connector.Error as err:
-    print(f"❌ 連線失敗！錯誤：{err}")
-
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:你的密碼@localhost/flask_login'
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# app.config['SECRET_KEY'] = 'supersecretkey'
+# db.init_app(app)
+# app.register_blueprint(auth_bp, url_prefix="/auth")  # 註冊藍圖
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+login_data ={
+    "張三":"123456"
+}
+
+@app.route('/login', methods=['GET','POST'])
+def login():
+    name = request.form.get("username")
+    pwd = request.form.get("password")
+
+
+    code = "select * from login_user where username='%s'" %(name)
+    cursor_ans = con_mySQL(code)
+    cursor_select = cursor_ans.fetchall()
+
+    if len(cursor_select)>0:
+        if pwd == cursor_select["password"]:
+            return "登錄成功"
+        else:
+            return "登錄失敗 <a href='login.html'>返回</a>"
+    else:
+        return "用戶不存在 <a href='login.html'>返回</a>"
+    
+    
+@app.route('/register', methods=['GET','POST'])
+def register():
+    name = request.form.get("username")
+    pwd = request.form.get("password")
+
+    if name in login_data.keys():
+        return "用戶已存在 <a href='register.html'>返回</a>"
+    else:
+        login_data[name]=pwd
+        return "註冊成功 <a href='login.html'>登入</a>"
 
 @app.route("/input")
 def input():
@@ -121,6 +138,8 @@ def submit():
     cap.release()
     out.release()
     # cv2.destroyAllWindows()
+    os.remove("static/uploaded_video.mp4")
+    os.remove("static/setting_pitcure.jpg")
     return render_template("video.html")
 
 @app.route("/video")
@@ -128,6 +147,8 @@ def video():
     return render_template("video.html")
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
+    # with app.app_context():
+    #     db.create_all()
     app.run(debug=True)
+
+
