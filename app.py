@@ -3,11 +3,36 @@ import cv2
 import numpy as np
 import os
 from flask_cors import CORS
+from models import db
+from routes import auth_bp  # 引入剛剛的 Blueprint
 
 app = Flask(__name__)
 CORS(app)
-UPLOAD_FOLDER = 'static'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# UPLOAD_FOLDER = 'static'
+# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:你的密碼@localhost/flask_login'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'supersecretkey'
+db.init_app(app)
+app.register_blueprint(auth_bp, url_prefix="/auth")  # 註冊藍圖
+
+try:
+    import mysql.connector
+
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="你的密碼",
+        database="flask_login"
+    )
+
+    if conn.is_connected():
+        print("✅ MySQL 連線成功！")
+    else:
+        print("❌ 連線失敗！")
+except mysql.connector.Error as err:
+    print(f"❌ 連線失敗！錯誤：{err}")
+
 
 @app.route('/')
 def index():
@@ -24,14 +49,14 @@ def upload():
         return "未上傳影片", 400
 
     if video:
-        video_path = os.path.join(app.config['UPLOAD_FOLDER'], 'uploaded_video.mp4')    # 路徑
+        video_path = os.path.join('static', 'uploaded_video.mp4')    # 路徑
         video.save(video_path)      # 存影片
 
         cap = cv2.VideoCapture(video_path)      # 讀取影片
         success, frame = cap.read()
 
         if success:
-            frame_path = os.path.join(app.config['UPLOAD_FOLDER'], 'setting_pitcure.jpg')
+            frame_path = os.path.join('static', 'setting_pitcure.jpg')
             cv2.imwrite(frame_path, frame)
         cap.release()
 
@@ -41,32 +66,15 @@ def upload():
 def setting():
     return render_template('setting.html')
 
-@app.route('/submit_setting', methods=["POST"])
-def submit_setting():
-    x1 = int(request.form["x1"])
-    x2 = int(request.form["x2"])
-    y1 = int(request.form["y1"])
-    y2 = int(request.form["y2"])
-
-    newF = (y1, y2, x1, x2)
-    return f"Selected range: newF = frame[{y1}:{y2}, {x1}:{x2}]"
-
 @app.route("/submit", methods=["POST"])
 def submit():
-    # 接收影片檔案
-    video_file = request.files["video"]
-    if not video_file:
-        return "未上傳影片", 400
-
-    # 保存上傳的影片到伺服器
-    upload_folder = "uploads"
-    if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder)
-    video_path = os.path.join(upload_folder, video_file.filename)
-    video_file.save(video_path)  # 將影片保存到伺服器
-
+    x1 = int(request.form.get("x1", 730))
+    x2 = int(request.form.get("x2", 740))
+    y1 = int(request.form.get("y1", 150))
+    y2 = int(request.form.get("y2", 450))
+    print(x1, x2, y1, y2)
     # 使用 OpenCV 處理影片
-    cap = cv2.VideoCapture("uploads/v_1.mp4")
+    cap = cv2.VideoCapture("static/uploaded_video.mp4")
     detect = 0
     fps = int(cap.get(cv2.CAP_PROP_FPS))  # 幀率
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) * 0.5)  # 調整後的寬
@@ -82,22 +90,20 @@ def submit():
     fourcc = cv2.VideoWriter_fourcc(*'X264')  # 使用 mp4v 編碼
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
     cut = None
-    s = 0
     while True:
-        s += 1
         ret, frame = cap.read()
         if not ret:
-            print("影片讀取完畢")
+            # print("影片讀取完畢")
             break
         frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-        newF = frame[150:450, 730:740]  # 偵測範圍
-        cv2.rectangle(frame, (730, 150), (740, 450), (0, 0, 255), 2)
+        newF = frame[y1:y2, x1:x2]  # 偵測範圍
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
         mask = (newF >= [210, 210, 210]).all(axis=2)
         if detect == 0:
             if np.any(mask):
                 cut = frame
-                print("偵測到球了")
+                # print("偵測到球了")
                 detect = 1
 
         if detect == 1:
@@ -108,14 +114,13 @@ def submit():
     if cut is not None:
         output = os.path.join("static/video", "detected.jpg")
         cv2.imwrite(output, cut)
-        print(f"圖片已保存至: {output}")
+        # print(f"圖片已保存至: {output}")
     else:
         print("未偵測到球，無法保存圖片")
 
     cap.release()
     out.release()
-    cv2.destroyAllWindows()
-    print(f"影片總幀數: {s}")
+    # cv2.destroyAllWindows()
     return render_template("video.html")
 
 @app.route("/video")
@@ -123,4 +128,6 @@ def video():
     return render_template("video.html")
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
