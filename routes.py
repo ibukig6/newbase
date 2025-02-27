@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from models import db, User
+from flask import session
 
 auth_bp = Blueprint('auth', __name__)  # 註冊藍圖
 
@@ -26,8 +27,15 @@ def login():
         password = request.form['password']
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
+            session['user_id'] = user.id
             flash("登入成功！")
-            return redirect(url_for('dashboard'))  
+            return redirect(url_for('auth.login'))  
         else:
             flash("登入失敗，請檢查帳號或密碼")
     return render_template('login.html')
+
+@auth_bp.route('/dashboard')
+def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    return "這是您的儀表板，歡迎！"
