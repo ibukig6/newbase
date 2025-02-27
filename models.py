@@ -7,6 +7,8 @@ conn = pymysql.connect(
     database="demo01"
 )
 
+print("MySQL 連線成功！")
+
 def con_mySQL(sql_code):
     try:
         conn.ping(reconnect=True)
@@ -19,7 +21,8 @@ def con_mySQL(sql_code):
         conn.close()
         return cursor
     except pymysql.MySQLError as err_massage:
-
+        conn.rollback()
+        # 關閉連接
         conn.close()
         return type(err_massage), err_massage
 

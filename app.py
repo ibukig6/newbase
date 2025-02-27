@@ -39,7 +39,7 @@ def login_form():
 
     code = "select * from login_user where username='%s'" %(name)
     cursor_ans = con_mySQL(code)
-    cursor_select = cursor_ans.fetchall()
+    cursor_select = cursor_ans.fetchall()[0]
 
     if len(cursor_select)>0:
         if pwd == cursor_select["password"]:
