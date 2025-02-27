@@ -4,20 +4,17 @@ import numpy as np
 import os
 from flask_cors import CORS
 from models import con_mySQL
-# from models import db
-# from routes import auth_bp  # 引入剛剛的 Blueprint
-
 
 app = Flask(__name__)
 CORS(app)
-# UPLOAD_FOLDER = 'static'
-# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:你的密碼@localhost/flask_login'
 # app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # app.config['SECRET_KEY'] = 'supersecretkey'
 
 # db.init_app(app)
-# app.register_blueprint(auth_bp, url_prefix="/auth")  # 註冊藍圖
+
+# app.register_blueprint(auth_bp, url_prefix="/auth")
 
 @app.route('/')
 def login():
@@ -26,10 +23,6 @@ def login():
 @app.route('/register')
 def register():
     return render_template('register.html')
-
-login_data ={
-    "張三":"123456"
-}
 
 @app.route('/login_form', methods=['GET','POST'])
 def login_form():
@@ -55,10 +48,15 @@ def register_form():
     name = request.form.get("username")
     pwd = request.form.get("password")
 
-    if name in login_data.keys():
+    code = "select * from login_user where username='%s'" %(name)
+    cursor_ans = con_mySQL(code)
+    cursor_select = cursor_ans.fetchall()[0]
+
+    if len(cursor_select)>0:
         return "用戶已存在 <a href='/register'>返回</a>"
     else:
-        login_data[name]=pwd
+        code = "INSERT INTO `login_user` (`username`, `password`) VALUES ('%s', '%s')" %(name, pwd)
+        con_mySQL(code)
         return "註冊成功 <a href='/'>登入</a>"
 
 @app.route("/input")
@@ -153,8 +151,4 @@ def video():
     return render_template("video.html")
 
 if __name__ == '__main__':
-    # with app.app_context():
-    #     db.create_all()
     app.run(debug=True)
-
-

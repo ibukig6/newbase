@@ -26,15 +26,16 @@ def con_mySQL(sql_code):
         conn.close()
         return type(err_massage), err_massage
 
+
 # username = "張三"
 
 # code = "INSERT INTO `login_user` (`username`, `password`) VALUES ('%s', '%s')" %(username, pwd)
 # print(con_mySQL(code))
 
-username = "張三"
-code = "select * from login_user"
-cursor_ans = con_mySQL(code)
-print(cursor_ans.fetchall())
+# username = "張三"
+# code = "select * from login_user"
+# cursor_ans = con_mySQL(code)
+# print(cursor_ans.fetchall())
 
 
 
