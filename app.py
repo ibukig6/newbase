@@ -32,10 +32,10 @@ def login_form():
 
     code = "select * from login_user where username='%s'" %(name)
     cursor_ans = con_mySQL(code)
-    cursor_select = cursor_ans.fetchall()[0]
+    cursor_select = cursor_ans.fetchall()
 
     if len(cursor_select)>0:
-        if pwd == cursor_select["password"]:
+        if pwd == cursor_select[0]["password"]:
             return "登入成功"
         else:
             return "登入失敗 <a href='/'>返回</a>"
@@ -50,7 +50,7 @@ def register_form():
 
     code = "select * from login_user where username='%s'" %(name)
     cursor_ans = con_mySQL(code)
-    cursor_select = cursor_ans.fetchall()[0]
+    cursor_select = cursor_ans.fetchall()
 
     if len(cursor_select)>0:
         return "用戶已存在 <a href='/register'>返回</a>"
