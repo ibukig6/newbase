@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, url_for, redirect
+from flask import Flask, render_template, request, url_for, redirect, session, flash
 import cv2
 import numpy as np
 import os
 from flask_cors import CORS
 from models import con_mySQL
+from datetime import timedelta
 
 app = Flask(__name__)
 CORS(app)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=1/60)
+app.secret_key = "123654"
 
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:你的密碼@localhost/flask_login'
 # app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -16,6 +19,7 @@ CORS(app)
 
 # app.register_blueprint(auth_bp, url_prefix="/auth")
 
+# 註冊與登入
 @app.route('/')
 def login():
     return render_template('login.html')
@@ -29,14 +33,14 @@ def login_form():
     name = request.form.get("username")
     pwd = request.form.get("password")
 
-
     code = "select * from login_user where username='%s'" %(name)
     cursor_ans = con_mySQL(code)
     cursor_select = cursor_ans.fetchall()
 
     if len(cursor_select)>0:
         if pwd == cursor_select[0]["password"]:
-            return "登入成功"
+            session["username"] = name
+            return redirect(url_for('home'))
         else:
             return "登入失敗 <a href='/'>返回</a>"
     else:
@@ -47,6 +51,10 @@ def login_form():
 def register_form():
     name = request.form.get("username")
     pwd = request.form.get("password")
+    pwd2 = request.form.get("password2")
+
+    if pwd2 != pwd:
+        return "密碼不一致 <a href='/register_form'>返回註冊頁面</a>"
 
     code = "select * from login_user where username='%s'" %(name)
     cursor_ans = con_mySQL(code)
@@ -59,6 +67,21 @@ def register_form():
         con_mySQL(code)
         return "註冊成功 <a href='/'>登入</a>"
 
+@app.route('/home')
+def home():
+    if "username" in session:                               # 這行後面我打算寫成函式
+        return render_template('home.html')
+    else:
+        return "小調皮，還想專漏洞啊？ <a href='/'>知道錯了並回登入畫面</a>"
+    
+@app.route('/logout')
+def logout():
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=1/60)
+    session.pop("user_id", None)
+    flash("已成功登出！", "info")
+    return redirect(url_for('login'))
+
+# 上傳影片
 @app.route("/input")
 def input():
     return render_template("input.html")
