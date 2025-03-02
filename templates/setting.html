@@ -9,35 +9,16 @@
 <body>
     <h1>調整偵測範圍</h1>
 
-    <!-- 容器，放置圖片與 Canvas -->
     <div style="position: relative; display: inline-block;">
-        <!-- 背景圖片 -->
         <img id="image" src="{{ url_for('static', filename='setting_pitcure.jpg') }}" style="width: 960px; display: block;">
-        <!-- 繪製矩形的 Canvas -->
         <canvas id="canvas" style="position: absolute; top: 0; left: 0;"></canvas>
     </div>
 
     <form action="/submit" method="POST">
-        <label for="x1" style="color:red">X1:</label>                                                       <!-- 名稱 -->
-        <input type="range" id="x1" name="x1" min="0" max="1280" value="730" oninput="updateSettings()">      <!-- 拉桿 -->
-        <span id="x1_val">730</span>                                                                          <!-- 後面顯示的數值 -->
+        <label for="x" style="color:red">X:</label>
+        <input type="range" id="x" name="x" min="0" max="1280" value="730" oninput="updateSettings()">
+        <span id="x_val">730</span>
         <br>
-
-        <label for="x2" style="color: blue;">X2:</label>
-        <input type="range" id="x2" name="x2" min="0" max="1280" value="740" oninput="updateSettings()">
-        <span id="x2_val">740</span>
-        <br>
-
-        <label for="y1" style="color:green">Y1:</label>
-        <input type="range" id="y1" name="y1" min="0" max="720" value="150" oninput="updateSettings()">
-        <span id="y1_val">150</span>
-        <br>
-
-        <label for="y2" style="color:orange">Y2:</label>
-        <input type="range" id="y2" name="y2" min="0" max="720" value="450" oninput="updateSettings()">
-        <span id="y2_val">450</span>
-        <br>
-
         <button type="submit">提交</button>
     </form>
 
