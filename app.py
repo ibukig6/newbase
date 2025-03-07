@@ -155,8 +155,8 @@ def submit():
     front_output_path = os.path.join(output_folder, "output_front.mp4")
     front_out = cv2.VideoWriter(front_output_path, fourcc, fps, (front_width, front_height))
 
-    # detected_img_path = os.path.join(output_folder, "detected_frame.jpg")  # 偵測到的圖片
-    # detected_front_img_path = os.path.join(output_folder, "detected_frame_front.jpg")  # 偵測到的前視角圖片
+    detected_img_path = os.path.join(output_folder, "detected_frame.jpg")  # 偵測到的圖片
+    detected_front_img_path = os.path.join(output_folder, "detected_frame_front.jpg")  # 偵測到的前視角圖片
 
     while True:
         ret, frame = cap.read()
@@ -195,9 +195,7 @@ def submit():
 
         # 標記偵測狀態
         if detect == 1:
-            detected_img_path = os.path.join(output_folder, "detected_frame.jpg")
             # detected_img_path = os.path.join(output_folder, "detected_frame.jpg")
-            detected_front_img_path = os.path.join(output_folder, "detected_frame_front.jpg")
             cv2.imwrite(detected_img_path, frame)
             cv2.imwrite(detected_front_img_path, front_frame)
             print(f"已儲存偵測到的影像: {detected_img_path}")
