@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, url_for, redirect, session, flash
 import cv2
 import numpy as np
+import mediapipe as mp
+import csv
 import os
 from flask_cors import CORS
 from models import con_mySQL
@@ -8,6 +10,7 @@ from datetime import timedelta
 from ultralytics import YOLO
 
 app = Flask(__name__)
+app.config["UPLOAD_FOLDER"] = "static"
 CORS(app)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=1/60)
 app.secret_key = "123654"
@@ -237,6 +240,93 @@ def submit():
 @app.route("/video")
 def video():
     return render_template("video.html")
+
+
+# 初始化 MediaPipe Pose
+mp_pose = mp.solutions.pose
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
+
+@app.route('/pose_index')
+def pose_index():
+    return render_template('pose_index.html')
+
+@app.route("/upload_pose", methods=["POST"])
+def upload_pose():
+    if "pose_video" not in request.files:
+        return "未上傳影片", 400
+
+    video = request.files["pose_video"]
+    if video.filename == "":
+        return "沒有選擇檔案", 400
+
+    # 儲存影片到 static 資料夾
+    video_path = os.path.join(app.config["UPLOAD_FOLDER"], "uploaded_pose_video.mp4")
+    video.save(video_path)
+
+    # 啟動 MediaPipe 偵測影片
+    process_pose_video(video_path)
+
+    return redirect(url_for("pose_video"))
+
+def calculate_angle(a, b, c):
+    """計算三點間的夾角"""
+    a = np.array(a)
+    b = np.array(b)
+    c = np.array(c)
+    ba = a - b
+    bc = c - b
+    cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+    angle = np.arccos(np.clip(cosine_angle, -1.0, 1.0))
+    return np.degrees(angle)
+
+def process_pose_video(input_path):
+    """處理 MediaPipe 偵測骨架的影片"""
+    cap = cv2.VideoCapture(input_path)
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    output_folder = "static/video"
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    output_path = os.path.join(output_folder, "pose_output.mp4")
+    csv_file_path = os.path.join(output_folder, "pose_data.csv")
+    fourcc = cv2.VideoWriter_fourcc(*'X264')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    with open(csv_file_path, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Frame", "Trigger", "Left Elbow Angle", "Right Elbow Angle", "Left Knee Angle", "Right Knee Angle"])
+
+    frame_count = 0
+
+    with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+        while cap.isOpened():
+            ret, img = cap.read()
+            if not ret:
+                break
+
+            frame_count += 1
+            img = cv2.resize(img, (width, height))
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            results = pose.process(img_rgb)
+
+            if results.pose_landmarks:
+                mp_drawing.draw_landmarks(
+                    img, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+                    landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+                )
+
+            out.write(img)
+
+    cap.release()
+    out.release()
+
+@app.route("/pose_video")
+def pose_video():
+    return render_template("pose_video.html")
 
 if __name__ == '__main__':
     app.run(debug=True)

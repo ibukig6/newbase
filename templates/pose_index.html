@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上傳影片 - 骨架偵測</title>
+</head>
+<body>
+    <h1>上傳影片進行骨架偵測</h1>
+    <form action="/upload_pose" method="post" enctype="multipart/form-data">
+        <input type="file" name="pose_video" accept="video/*" required>
+        <button type="submit">上傳並處理</button>
+    </form>
+</body>
+</html>
