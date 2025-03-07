@@ -9,19 +9,49 @@
 <body>
     <h1>調整偵測範圍</h1>
 
+    <!-- 側面視角：調整偵測線 -->
     <div style="position: relative; display: inline-block;">
-        <img id="image" src="{{ url_for('static', filename='setting_pitcure.jpg') }}" style="width: 960px; display: block;">
-        <canvas id="canvas" style="position: absolute; top: 0; left: 0;"></canvas>
+        <img class="image" id="side_image" src="{{ url_for('static', filename='setting_pitcure.jpg') }}" style="width: 960px; display: block;">
+        <canvas class="canvas" id="side_canvas" style="position: absolute; top: 0; left: 0;"></canvas>
     </div>
 
     <form action="/submit" method="POST">
-        <label for="x" style="color:red">X:</label>
-        <input type="range" id="x" name="x" min="0" max="1280" value="730" oninput="updateSettings()">
-        <span id="x_val">730</span>
+        <label for="x" style="color:red">偵測線 X:</label>
+        <input type="range" id="x" name="x" min="0" max="1280" value="720" oninput="updateDetectionLine()">
+        <span id="x_val">720</span>
         <br>
+        
+        <!-- 正面視角：調整好球帶 -->
+        <h2>調整好球帶範圍</h2>
+        <div style="position: relative; display: inline-block;">
+            <img class="image" id="front_image" src="{{ url_for('static', filename='setting_pitcure_front.jpg') }}" style="width: 960px; display: block;">
+            <canvas class="canvas" id="front_canvas" style="position: absolute; top: 0; left: 0;"></canvas>
+        </div>
+        <br>
+
+        <label for="x1">X1:</label>
+        <input type="range" id="x1" name="x1" min="0" max="1280" value="300" oninput="updateStrikeZone()">
+        <span id="x1_val">300</span>
+        <br>
+
+        <label for="x2">X2:</label>
+        <input type="range" id="x2" name="x2" min="0" max="1280" value="600" oninput="updateStrikeZone()">
+        <span id="x2_val">600</span>
+        <br>
+
+        <label for="y1">Y1:</label>
+        <input type="range" id="y1" name="y1" min="0" max="720" value="200" oninput="updateStrikeZone()">
+        <span id="y1_val">200</span>
+        <br>
+
+        <label for="y2">Y2:</label>
+        <input type="range" id="y2" name="y2" min="0" max="720" value="500" oninput="updateStrikeZone()">
+        <span id="y2_val">500</span>
+        <br>
+
         <button type="submit">提交</button>
     </form>
 
-    <script src="../static/js/setting.js"></script>
+    <script src="{{ url_for('static', filename='js/setting.js') }}"></script>
 </body>
 </html>
