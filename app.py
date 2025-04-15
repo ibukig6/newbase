@@ -125,6 +125,7 @@ def setting():
     return render_template('setting.html')
 
 model = YOLO(r"static/model/best.pt")
+
 @app.route("/submit", methods=["POST"])
 def submit():
     detect_line_x = int(request.form.get("x", 720))
@@ -133,44 +134,40 @@ def submit():
     detect_front_y1 = int(request.form.get("y1", 200))
     detect_front_y2 = int(request.form.get("y2", 500))
 
-    # print(x1, x2, y1, y2)
-    # 使用 OpenCV 處理影片
     cap = cv2.VideoCapture("static/uploaded_video.mp4")
     front_cap = cv2.VideoCapture("static/uploaded_video_front.mp4")
 
     detect = 0
-    fps = int(cap.get(cv2.CAP_PROP_FPS))  # 幀率
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) * 0.5)  # 調整後的寬
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) * 0.5)  # 調整後的高
-    front_width = int(front_cap.get(cv2.CAP_PROP_FRAME_WIDTH) * 0.5)  # 調整後的寬
-    front_height = int(front_cap.get(cv2.CAP_PROP_FRAME_HEIGHT) * 0.5)  # 調整後的高
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))      # 保留原尺寸
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    front_width = int(front_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    front_height = int(front_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    # 確保輸出目錄存在
     output_folder = "static/video"
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    # 定義輸出的影片路徑
     output_path = os.path.join(output_folder, "output.mp4")
-    fourcc = cv2.VideoWriter_fourcc(*'X264')  # 使用 mp4v 編碼
+    fourcc = cv2.VideoWriter_fourcc(*'X264')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-    
+
     front_output_path = os.path.join(output_folder, "output_front.mp4")
     front_out = cv2.VideoWriter(front_output_path, fourcc, fps, (front_width, front_height))
 
-    detected_img_path = os.path.join(output_folder, "detected_frame.jpg")  # 偵測到的圖片
-    detected_front_img_path = os.path.join(output_folder, "detected_frame_front.jpg")  # 偵測到的前視角圖片
+    detected_img_path = os.path.join(output_folder, "detected_frame.jpg")
+    detected_front_img_path = os.path.join(output_folder, "detected_frame_front.jpg")
 
     while True:
         ret, frame = cap.read()
         front_ret, front_frame = front_cap.read()
         if not ret or not front_ret:
-            # print("影片讀取完畢")
             break
-        frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-        front_frame = cv2.resize(front_frame, (0, 0), fx=0.5, fy=0.5)
 
-        # newF = frame[y1:y2, detect_line_x:x2]  # 偵測範圍
+        # 移除 resize，保留原始尺寸
+        # frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+        # front_frame = cv2.resize(front_frame, (0, 0), fx=0.5, fy=0.5)
+
         cv2.line(frame, (detect_line_x, 0), (detect_line_x, height), (0, 0, 255), 2)
         cv2.rectangle(front_frame, (detect_front_x1, detect_front_y1), (detect_front_x2, detect_front_y2), (0, 0, 255), 2)
 
@@ -178,27 +175,22 @@ def submit():
         front_results = model(front_frame)
 
         for result in results:
-            boxes = result.boxes  # 取得所有偵測框
+            boxes = result.boxes
             for box in boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])  # 取得座標
-                conf = box.conf[0].item()  # 信心分數
-                cls = int(box.cls[0])  # 取得物件類別
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                conf = box.conf[0].item()
+                cls = int(box.cls[0])
                 label = f"{model.names[cls]} {conf:.2f}"
 
-                # 計算物件中心點
                 center_x = (x1 + x2) // 2
 
-                # 畫出邊界框
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-                # 如果偵測到 "baseball" 且中心點超過偵測線
                 if "baseball" in model.names[cls].lower() and center_x >= detect_line_x:
                     detect += 1
 
-        # 標記偵測狀態
         if detect == 1:
-            # detected_img_path = os.path.join(output_folder, "detected_frame.jpg")
             cv2.imwrite(detected_img_path, frame)
             cv2.imwrite(detected_front_img_path, front_frame)
             print(f"已儲存偵測到的影像: {detected_img_path}")
@@ -208,7 +200,7 @@ def submit():
         for front_result in front_results:
             front_boxes = front_result.boxes
             for front_box in front_boxes:
-                fx1, fx2, fy1, fy2 = map(int, front_box.xyxy[0])
+                fx1, fy1, fx2, fy2 = map(int, front_box.xyxy[0])
                 front_conf = front_box.conf[0].item()
                 front_cls = int(front_box.cls[0])
                 front_label = f"{model.names[front_cls]} {front_conf:.2f}"
@@ -218,24 +210,23 @@ def submit():
 
                 cv2.rectangle(front_frame, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
                 cv2.putText(front_frame, front_label, (fx1, fy1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        
+
         if detect == 1:
             cv2.putText(frame, "DETECT", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
 
-        # 儲存處理過的影片
         out.write(frame)
         front_out.write(front_frame)
 
-    # 釋放資源
     cap.release()
     front_cap.release()
     out.release()
     front_out.release()
 
-    os.remove("static/uploaded_video.mp4")  # 刪除上傳的影片
+    os.remove("static/uploaded_video.mp4")
     os.remove("static/uploaded_video_front.mp4")
 
     return render_template("video.html", detected_img=detected_img_path, detected_front_img=detected_front_img_path)
+
 
 @app.route("/video")
 def video():

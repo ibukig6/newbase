@@ -10,8 +10,8 @@ function drawDetectionLine(x) {
     let ctx = canvas.getContext("2d");
     let img = document.getElementById("side_image");
 
-    canvas.width = img.width;
-    canvas.height = img.height;
+    canvas.width = img.clientWidth;
+    canvas.height = img.clientHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = "red";
@@ -42,8 +42,8 @@ function drawStrikeZone(x1, x2, y1, y2) {
     let ctx = canvas.getContext("2d");
     let img = document.getElementById("front_image");
 
-    canvas.width = img.width;
-    canvas.height = img.height;
+    canvas.width = img.clientWidth;
+    canvas.height = img.clientHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = "red";
@@ -58,3 +58,31 @@ window.onload = function () {
     updateDetectionLine();
     updateStrikeZone();
 };
+
+// **靈活轉換：根據圖片實際縮放比自動轉換回原始座標**
+document.querySelector("form").addEventListener("submit", function (e) {
+    const sideImg = document.getElementById("side_image");
+    const frontImg = document.getElementById("front_image");
+
+    // 側面圖比例
+    const sideScaleX = sideImg.naturalWidth / sideImg.clientWidth;
+
+    // 側面偵測線
+    const x = document.getElementById("x");
+    x.value = Math.round(parseInt(x.value) * sideScaleX);
+
+    // 正面圖比例
+    const frontScaleX = frontImg.naturalWidth / frontImg.clientWidth;
+    const frontScaleY = frontImg.naturalHeight / frontImg.clientHeight;
+
+    // 正面好球帶
+    const x1 = document.getElementById("x1");
+    const x2 = document.getElementById("x2");
+    const y1 = document.getElementById("y1");
+    const y2 = document.getElementById("y2");
+
+    x1.value = Math.round(parseInt(x1.value) * frontScaleX);
+    x2.value = Math.round(parseInt(x2.value) * frontScaleX);
+    y1.value = Math.round(parseInt(y1.value) * frontScaleY);
+    y2.value = Math.round(parseInt(y2.value) * frontScaleY);
+});
