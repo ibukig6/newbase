@@ -8,6 +8,8 @@ from flask_cors import CORS
 from models import con_mySQL
 from datetime import timedelta
 from ultralytics import YOLO
+import subprocess
+import shutil
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static"
@@ -128,64 +130,49 @@ model = YOLO(r"static/model/best.pt")
 
 @app.route("/submit", methods=["POST"])
 def submit():
+    # Step 1: 接收前端數據
     detect_line_x = int(request.form.get("x", 720))
     detect_front_x1 = int(request.form.get("x1", 300))
     detect_front_x2 = int(request.form.get("x2", 600))
     detect_front_y1 = int(request.form.get("y1", 200))
     detect_front_y2 = int(request.form.get("y2", 500))
 
-    cap = cv2.VideoCapture("static/uploaded_video.mp4")
-    front_cap = cv2.VideoCapture("static/uploaded_video_front.mp4")
+    # Step 2: 轉換影片為影格
+    os.makedirs("frames/side", exist_ok=True)
+    os.makedirs("frames/front", exist_ok=True)
+
+    subprocess.run("ffmpeg -i static/uploaded_video.mp4 frames/side/frame_%05d.jpg", shell=True)
+    subprocess.run("ffmpeg -i static/uploaded_video_front.mp4 frames/front/frame_%05d.jpg", shell=True)
 
     detect = 0
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))      # 保留原尺寸
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    front_width = int(front_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    front_height = int(front_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
     output_folder = "static/video"
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    output_path = os.path.join(output_folder, "output.mp4")
-    fourcc = cv2.VideoWriter_fourcc(*'X264')
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-
-    front_output_path = os.path.join(output_folder, "output_front.mp4")
-    front_out = cv2.VideoWriter(front_output_path, fourcc, fps, (front_width, front_height))
+    os.makedirs(output_folder, exist_ok=True)
 
     detected_img_path = os.path.join(output_folder, "detected_frame.jpg")
     detected_front_img_path = os.path.join(output_folder, "detected_frame_front.jpg")
 
-    while True:
-        ret, frame = cap.read()
-        front_ret, front_frame = front_cap.read()
-        if not ret or not front_ret:
-            break
+    # Step 3: 處理每一張影格
+    frame_files = sorted(os.listdir("frames/side"))
+    for filename in frame_files:
+        side_path = f"frames/side/{filename}"
+        front_path = f"frames/front/{filename}"
 
-        # 移除 resize，保留原始尺寸
-        # frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-        # front_frame = cv2.resize(front_frame, (0, 0), fx=0.5, fy=0.5)
+        frame = cv2.imread(side_path)
+        front_frame = cv2.imread(front_path)
 
-        cv2.line(frame, (detect_line_x, 0), (detect_line_x, height), (0, 0, 255), 2)
-        cv2.rectangle(front_frame, (detect_front_x1, detect_front_y1), (detect_front_x2, detect_front_y2), (0, 0, 255), 2)
-
+        height, width = frame.shape[:2]
         results = model(frame)
         front_results = model(front_frame)
 
         for result in results:
-            boxes = result.boxes
-            for box in boxes:
+            for box in result.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
-                conf = box.conf[0].item()
-                cls = int(box.cls[0])
-                label = f"{model.names[cls]} {conf:.2f}"
-
                 center_x = (x1 + x2) // 2
+                cls = int(box.cls[0])
+                label = f"{model.names[cls]}"
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.putText(frame, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
 
                 if "baseball" in model.names[cls].lower() and center_x >= detect_line_x:
                     detect += 1
@@ -193,35 +180,27 @@ def submit():
         if detect == 1:
             cv2.imwrite(detected_img_path, frame)
             cv2.imwrite(detected_front_img_path, front_frame)
-            print(f"已儲存偵測到的影像: {detected_img_path}")
-        elif detect > 1:
-            cv2.putText(frame, "detect", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
+
+        cv2.line(frame, (detect_line_x, 0), (detect_line_x, height), (0, 0, 255), 2)
+        cv2.rectangle(front_frame, (detect_front_x1, detect_front_y1), (detect_front_x2, detect_front_y2), (0, 0, 255), 2)
 
         for front_result in front_results:
-            front_boxes = front_result.boxes
-            for front_box in front_boxes:
-                fx1, fy1, fx2, fy2 = map(int, front_box.xyxy[0])
-                front_conf = front_box.conf[0].item()
-                front_cls = int(front_box.cls[0])
-                front_label = f"{model.names[front_cls]} {front_conf:.2f}"
-
-                center_x = (fx1 + fx2) // 2
-                center_y = (fy1 + fy2) // 2
-
+            for box in front_result.boxes:
+                fx1, fy1, fx2, fy2 = map(int, box.xyxy[0])
+                label = f"{model.names[int(box.cls[0])]}"
                 cv2.rectangle(front_frame, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
-                cv2.putText(front_frame, front_label, (fx1, fy1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.putText(front_frame, label, (fx1, fy1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
 
-        if detect == 1:
-            cv2.putText(frame, "DETECT", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
+        # 儲存已繪圖的 frame 回原位置
+        cv2.imwrite(side_path, frame)
+        cv2.imwrite(front_path, front_frame)
 
-        out.write(frame)
-        front_out.write(front_frame)
+    # Step 4: 將處理後影格轉回影片
+    subprocess.run("ffmpeg -framerate 30 -i frames/side/frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p static/video/output.mp4", shell=True)
+    subprocess.run("ffmpeg -framerate 30 -i frames/front/frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p static/video/output_front.mp4", shell=True)
 
-    cap.release()
-    front_cap.release()
-    out.release()
-    front_out.release()
-
+    # Step 5: 清除暫存
+    shutil.rmtree("frames")
     os.remove("static/uploaded_video.mp4")
     os.remove("static/uploaded_video_front.mp4")
 
