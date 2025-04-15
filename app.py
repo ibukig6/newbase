@@ -10,6 +10,7 @@ from datetime import timedelta
 from ultralytics import YOLO
 import subprocess
 import shutil
+import time
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static"
@@ -126,10 +127,11 @@ def upload():
 def setting():
     return render_template('setting.html')
 
-model = YOLO(r"static/model/best.pt")
+model = YOLO(r"static/model/0413.pt")
 
 @app.route("/submit", methods=["POST"])
 def submit():
+    start = time.time()
     # Step 1: 接收前端數據
     detect_line_x = int(request.form.get("x", 720))
     detect_front_x1 = int(request.form.get("x1", 300))
@@ -141,8 +143,8 @@ def submit():
     os.makedirs("frames/side", exist_ok=True)
     os.makedirs("frames/front", exist_ok=True)
 
-    subprocess.run("ffmpeg -i static/uploaded_video.mp4 frames/side/frame_%05d.jpg", shell=True)
-    subprocess.run("ffmpeg -i static/uploaded_video_front.mp4 frames/front/frame_%05d.jpg", shell=True)
+    subprocess.run("ffmpeg -y -i static/uploaded_video.mp4 frames/side/frame_%05d.jpg", shell=True)
+    subprocess.run("ffmpeg -y -i static/uploaded_video_front.mp4 frames/front/frame_%05d.jpg", shell=True)
 
     detect = 0
     output_folder = "static/video"
@@ -196,13 +198,16 @@ def submit():
         cv2.imwrite(front_path, front_frame)
 
     # Step 4: 將處理後影格轉回影片
-    subprocess.run("ffmpeg -framerate 30 -i frames/side/frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p static/video/output.mp4", shell=True)
-    subprocess.run("ffmpeg -framerate 30 -i frames/front/frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p static/video/output_front.mp4", shell=True)
+    subprocess.run("ffmpeg -y -framerate 30 -i frames/side/frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p static/video/output.mp4", shell=True)
+    subprocess.run("ffmpeg -y -framerate 30 -i frames/front/frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p static/video/output_front.mp4", shell=True)
 
     # Step 5: 清除暫存
     shutil.rmtree("frames")
     os.remove("static/uploaded_video.mp4")
     os.remove("static/uploaded_video_front.mp4")
+
+    end = time.time()
+    print(end-start)
 
     return render_template("video.html", detected_img=detected_img_path, detected_front_img=detected_front_img_path)
 
