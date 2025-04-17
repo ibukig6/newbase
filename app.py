@@ -127,11 +127,12 @@ def upload():
 def setting():
     return render_template('setting.html')
 
-model = YOLO(r"static/model/0413.pt")
+model = YOLO("static/model/0413.pt").to("cuda")
 
 @app.route("/submit", methods=["POST"])
 def submit():
     start = time.time()
+
     # Step 1: 接收前端數據
     detect_line_x = int(request.form.get("x", 720))
     detect_front_x1 = int(request.form.get("x1", 300))
@@ -153,6 +154,10 @@ def submit():
     detected_img_path = os.path.join(output_folder, "detected_frame.jpg")
     detected_front_img_path = os.path.join(output_folder, "detected_frame_front.jpg")
 
+    # 新增：儲存軌跡點
+    trajectory_points = []
+    trajectory_points_front = []
+
     # Step 3: 處理每一張影格
     frame_files = sorted(os.listdir("frames/side"))
     for filename in frame_files:
@@ -170,28 +175,46 @@ def submit():
             for box in result.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 center_x = (x1 + x2) // 2
+                center_y = (y1 + y2) // 2
                 cls = int(box.cls[0])
                 label = f"{model.names[cls]}"
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
 
-                if "baseball" in model.names[cls].lower() and center_x >= detect_line_x:
-                    detect += 1
+                if "baseball" in model.names[cls].lower():
+                    trajectory_points.append((center_x, center_y))  # 新增：記錄軌跡點
+                    if center_x >= detect_line_x:
+                        detect += 1
 
         if detect == 1:
             cv2.imwrite(detected_img_path, frame)
             cv2.imwrite(detected_front_img_path, front_frame)
 
+        # 畫偵測線與矩形區域
         cv2.line(frame, (detect_line_x, 0), (detect_line_x, height), (0, 0, 255), 2)
         cv2.rectangle(front_frame, (detect_front_x1, detect_front_y1), (detect_front_x2, detect_front_y2), (0, 0, 255), 2)
 
         for front_result in front_results:
             for box in front_result.boxes:
                 fx1, fy1, fx2, fy2 = map(int, box.xyxy[0])
-                label = f"{model.names[int(box.cls[0])]}"
+                cls = int(box.cls[0])
+                label = f"{model.names[cls]}"
+                center_x = (fx1 + fx2) // 2
+                center_y = (fy1 + fy2) // 2
+
                 cv2.rectangle(front_frame, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
                 cv2.putText(front_frame, label, (fx1, fy1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+
+                if "baseball" in label.lower():
+                    trajectory_points_front.append((center_x, center_y))  # 新增：記錄正面軌跡
+
+        # 新增：畫出軌跡點
+        for point in trajectory_points:
+            cv2.circle(frame, point, radius=4, color=(255, 0, 0), thickness=-1)
+
+        for point in trajectory_points_front:
+            cv2.circle(front_frame, point, radius=4, color=(255, 0, 0), thickness=-1)
 
         # 儲存已繪圖的 frame 回原位置
         cv2.imwrite(side_path, frame)
