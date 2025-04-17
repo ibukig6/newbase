@@ -61,7 +61,8 @@
 #     flash("已成功登出！", "info")
 #     return redirect(url_for('auth.login'))
 import torch
-print("CUDA 是否可用：", torch.cuda.is_available())
-print("CUDA 裝置名稱：", torch.cuda.get_device_name(0))
+print(torch.cuda.memory_allocated() / 1024**2, "MB 已使用")
+print(torch.cuda.memory_reserved() / 1024**2, "MB 預留")
+
 
 

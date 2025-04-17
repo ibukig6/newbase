@@ -11,12 +11,14 @@ from ultralytics import YOLO
 import subprocess
 import shutil
 import time
+import torch
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "static"
 CORS(app)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=1/60)
 app.secret_key = "123654"
+model = YOLO("static/model/0413.pt").to("cuda")
 
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:你的密碼@localhost/flask_login'
 # app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -127,12 +129,20 @@ def upload():
 def setting():
     return render_template('setting.html')
 
-model = YOLO("static/model/0413.pt").to("cuda")
+
+class OneTimeTask:
+    def __init__(self):
+        self.triggered = False
+
+    def run(self, func):
+        if not self.triggered:
+            func()
+            self.triggered = True
 
 @app.route("/submit", methods=["POST"])
 def submit():
     start = time.time()
-
+    save_images_once = OneTimeTask()
     # Step 1: 接收前端數據
     detect_line_x = int(request.form.get("x", 720))
     detect_front_x1 = int(request.form.get("x1", 300))
@@ -180,16 +190,16 @@ def submit():
                 label = f"{model.names[cls]}"
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
                 if "baseball" in model.names[cls].lower():
-                    trajectory_points.append((center_x, center_y))  # 新增：記錄軌跡點
+                    trajectory_points.append((center_x, center_y))  # 記錄軌跡點
                     if center_x >= detect_line_x:
-                        detect += 1
-
-        if detect == 1:
-            cv2.imwrite(detected_img_path, frame)
-            cv2.imwrite(detected_front_img_path, front_frame)
+                        # 執行一次性儲存任務
+                        save_images_once.run(lambda: (
+                            cv2.imwrite(detected_img_path, frame),
+                            cv2.imwrite(detected_front_img_path, front_frame)
+                        ))
 
         # 畫偵測線與矩形區域
         cv2.line(frame, (detect_line_x, 0), (detect_line_x, height), (0, 0, 255), 2)
